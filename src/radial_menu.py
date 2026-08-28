@@ -25,7 +25,13 @@ from pynput import keyboard as pynput_keyboard
 import keyboard  # se sigue usando para ENVIAR atajos/macros (keyboard.send / keyboard.write)
 from PIL import Image, ImageTk
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, "frozen", False):
+    # Ejecutable compilado (PyInstaller): __file__ apuntaria a la carpeta
+    # temporal _MEIxxxxxx y NO a la carpeta real donde esta el .exe portable.
+    # sys.executable si apunta al .exe real, por eso se usa aqui.
+    BASE_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 
 ICON_SIZE = 28
