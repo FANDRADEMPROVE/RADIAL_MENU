@@ -206,25 +206,34 @@ def execute_action(item):
 
     if item_type == "program":
         try:
-            subprocess.Popen(action, shell=True)
+            # Sin shell=True: subprocess maneja rutas con espacios
+            # correctamente (ej. "C:\Program Files\...") sin necesitar
+            # comillas manuales, que es donde fallaba antes en silencio.
+            if not action or not os.path.exists(action):
+                messagebox.showerror(
+                    "Radial Menu - Programa no encontrado",
+                    f"No se encontro el archivo:\n\n{action}\n\n"
+                    "Revisa la ruta en el Editor (boton 'Editar')."
+                )
+                return
+            subprocess.Popen([action])
         except Exception as e:
-            print(f"Error abriendo programa: {e}")
+            messagebox.showerror("Radial Menu - Error", f"Error abriendo programa:\n{e}")
 
     elif item_type == "script":
         try:
             if action.lower().endswith(".vbs"):
-                subprocess.Popen(["wscript.exe", action], shell=True)
+                subprocess.Popen(["wscript.exe", action])
             elif action.lower().endswith(".ps1"):
                 subprocess.Popen(
-                    ["powershell.exe", "-ExecutionPolicy", "Bypass", "-File", action],
-                    shell=True
+                    ["powershell.exe", "-ExecutionPolicy", "Bypass", "-File", action]
                 )
             elif action.lower().endswith(".bat") or action.lower().endswith(".cmd"):
-                subprocess.Popen(action, shell=True)
+                subprocess.Popen([action], shell=True)
             else:
-                subprocess.Popen(action, shell=True)
+                subprocess.Popen([action])
         except Exception as e:
-            print(f"Error ejecutando script: {e}")
+            messagebox.showerror("Radial Menu - Error", f"Error ejecutando script:\n{e}")
 
     elif item_type == "shortcut":
         try:
