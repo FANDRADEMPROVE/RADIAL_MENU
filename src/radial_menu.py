@@ -309,9 +309,19 @@ if __name__ == "__main__":
         app.run()
     except Exception as e:
         import traceback
+        error_text = traceback.format_exc()
         print("=" * 60)
         print("OCURRIO UN ERROR AL INICIAR RadialMenu:")
         print("=" * 60)
-        traceback.print_exc()
+        print(error_text)
         print("=" * 60)
-        input("Presiona ENTER para cerrar esta ventana...")
+        try:
+            log_path = os.path.join(BASE_DIR, "error_log.txt")
+            with open(log_path, "w", encoding="utf-8") as f:
+                f.write(error_text)
+        except Exception:
+            pass
+        try:
+            input("Presiona ENTER para cerrar esta ventana...")
+        except Exception:
+            pass
