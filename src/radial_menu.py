@@ -226,6 +226,24 @@ def execute_action(item):
         except Exception as e:
             messagebox.showerror("Radial Menu - Error", f"Error abriendo programa:\n{e}")
 
+    elif item_type == "file":
+        try:
+            # os.startfile abre el archivo con el programa asociado en
+            # Windows, igual que un doble clic en el explorador. Sirve
+            # para accesos directos (.lnk) con perfil/parametros propios
+            # (ej. Civil 3D), documentos (.pdf, .docx, .txt) o cualquier
+            # otro archivo (.dwg, etc.).
+            if not action or not os.path.exists(action):
+                messagebox.showerror(
+                    "Radial Menu - Archivo no encontrado",
+                    f"No se encontro el archivo:\n\n{action}\n\n"
+                    "Revisa la ruta en el Editor (boton 'Editar')."
+                )
+                return
+            os.startfile(action)
+        except Exception as e:
+            messagebox.showerror("Radial Menu - Error", f"Error abriendo archivo:\n{e}")
+
     elif item_type == "script":
         try:
             if action.lower().endswith(".vbs"):
