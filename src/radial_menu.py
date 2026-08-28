@@ -4,9 +4,9 @@ Radial Menu - Menu de anillo activable por hotkey de teclado
 a un boton fisico, sin necesitar permisos de administrador).
 
 Requiere (se instalan solos via requirements.txt):
-    keyboard      -> enviar atajos/macros de teclado
-    pynput        -> detectar el hotkey global (no requiere admin en Windows)
+    keyboard      -> detectar hotkeys globales y enviar atajos
     Pillow        -> cargar iconos PNG (y SVG si hay cairosvg)
+    pywin32       -> lanzar programas de forma mas robusta en Windows
 
 Autor: generado para Francisco
 """
@@ -19,6 +19,7 @@ import sys
 import threading
 import tkinter as tk
 from tkinter import font as tkfont
+from tkinter import messagebox
 
 from pynput import keyboard as pynput_keyboard
 import keyboard  # se sigue usando para ENVIAR atajos/macros (keyboard.send / keyboard.write)
@@ -27,7 +28,7 @@ from PIL import Image, ImageTk
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 
-ICON_SIZE = 48
+ICON_SIZE = 28
 BG_COLOR = "#1e1e1e"
 RING_COLOR = "#2d2d30"
 HOVER_COLOR = "#0e639c"
@@ -54,6 +55,7 @@ def load_icon(path, size=ICON_SIZE):
             img = img.resize((size, size), Image.LANCZOS)
         return ImageTk.PhotoImage(img)
     except Exception:
+        # Icono de respaldo: circulo simple si no se encuentra el archivo
         img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
         return ImageTk.PhotoImage(img)
 
@@ -67,12 +69,13 @@ class RadialMenu:
         self.title_text = title
 
         self.root = tk.Toplevel()
-        self.root.overrideredirect(True)
+        self.root.overrideredirect(True)          # sin bordes de ventana
         self.root.attributes("-topmost", True)
         self.root.configure(bg=TRANSPARENT_KEY)
         self.root.attributes("-transparentcolor", TRANSPARENT_KEY)
 
-        size = radius * 2 + 40
+        size = radius * 2 + 90  # margen extra para que los sectores no se corten
+        # Centrar en la posicion actual del cursor
         px, py = self.root.winfo_pointerxy()
         x = px - size // 2
         y = py - size // 2
@@ -85,8 +88,8 @@ class RadialMenu:
         self.canvas.pack()
 
         self.center = (size // 2, size // 2)
-        self.icon_refs = []
-        self.item_boxes = []
+        self.icon_refs = []  # evitar garbage collection de imagenes
+        self.item_boxes = []  # (x1,y1,x2,y2,index)
         self.hover_index = None
 
         self._draw()
@@ -104,6 +107,7 @@ class RadialMenu:
             return
         angle_step = 360 / n
 
+        # Circulo central (indicador)
         self.canvas.create_oval(
             cx - self.inner_radius, cy - self.inner_radius,
             cx + self.inner_radius, cy + self.inner_radius,
@@ -115,11 +119,12 @@ class RadialMenu:
         )
 
         for i, item in enumerate(self.items):
-            angle_deg = -90 + i * angle_step
+            angle_deg = -90 + i * angle_step  # empezar arriba
             angle_rad = math.radians(angle_deg)
             ix = cx + math.cos(angle_rad) * self.radius
             iy = cy + math.sin(angle_rad) * self.radius
 
+            # Sector visual (cuna) detras del icono
             a0 = angle_deg - angle_step / 2
             a1 = angle_deg + angle_step / 2
             self.canvas.create_arc(
@@ -143,6 +148,7 @@ class RadialMenu:
             box_r = ICON_SIZE
             self.item_boxes.append((ix - box_r, iy - box_r, ix + box_r, iy + box_r, i))
 
+        # Redibujar el circulo central encima de los sectores
         self.canvas.create_oval(
             cx - self.inner_radius, cy - self.inner_radius,
             cx + self.inner_radius, cy + self.inner_radius,
@@ -163,6 +169,7 @@ class RadialMenu:
         idx = self._index_at(event.x, event.y)
         if idx != self.hover_index:
             self.hover_index = idx
+            # (Aqui se podria resaltar el sector activo redibujando)
 
     def _on_click(self, event):
         idx = self._index_at(event.x, event.y)
@@ -193,7 +200,7 @@ def execute_action(item):
     if item_type == "submenu":
         submenu_items = item.get("submenu", [])
         if submenu_items:
-            RadialMenu(submenu_items, radius=150, inner_radius=50,
+            RadialMenu(submenu_items, radius=75, inner_radius=25,
                        title=item.get("label", "Submenu"))
         return
 
@@ -252,7 +259,7 @@ def hotkey_to_pynput_format(hotkey_str):
     parts = [p.strip().lower() for p in hotkey_str.split("+") if p.strip()]
     converted = []
     for part in parts:
-        converted.append(aliases.get(part, part))
+        converted.append(aliases.get(part, part))  # letras sueltas quedan igual (ej: 'h')
     return "+".join(converted)
 
 
@@ -260,7 +267,7 @@ class App:
     def __init__(self):
         self.config = load_config()
         self.root = tk.Tk()
-        self.root.withdraw()
+        self.root.withdraw()  # ventana raiz invisible, solo controla el loop
         self.menu_open = False
 
         hotkey_str = self.config.get("hotkey", "ctrl+shift+alt+space")
@@ -281,6 +288,8 @@ class App:
         self.listener.start()
 
     def _trigger_open_menu(self):
+        # El callback de pynput corre en su propio hilo; hay que pasar
+        # la apertura del menu al hilo principal de Tk con root.after
         self.root.after(0, self.open_menu)
 
     def open_menu(self):
@@ -310,18 +319,27 @@ if __name__ == "__main__":
     except Exception as e:
         import traceback
         error_text = traceback.format_exc()
-        print("=" * 60)
-        print("OCURRIO UN ERROR AL INICIAR RadialMenu:")
-        print("=" * 60)
-        print(error_text)
-        print("=" * 60)
+
+        # Guardamos el error en un archivo junto al programa, por si el
+        # cuadro de dialogo no llega a mostrarse por alguna razon.
         try:
             log_path = os.path.join(BASE_DIR, "error_log.txt")
             with open(log_path, "w", encoding="utf-8") as f:
                 f.write(error_text)
         except Exception:
             pass
+
+        # Como el programa corre sin consola visible (--windowed), mostramos
+        # el error en una ventana emergente en vez de imprimirlo en pantalla.
         try:
-            input("Presiona ENTER para cerrar esta ventana...")
+            error_root = tk.Tk()
+            error_root.withdraw()
+            messagebox.showerror(
+                "Radial Menu - Error al iniciar",
+                "Ocurrio un error al iniciar el programa.\n\n"
+                f"{error_text}\n\n"
+                f"Este error tambien se guardo en:\n{log_path}"
+            )
+            error_root.destroy()
         except Exception:
             pass
