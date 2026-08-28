@@ -26,6 +26,7 @@ os.makedirs(ICONS_DIR, exist_ok=True)
 
 ACTION_TYPES = [
     ("program", "Ejecutar programa (.exe)"),
+    ("file", "Abrir archivo / acceso directo"),
     ("script", "Ejecutar script (.vbs/.ps1/.bat)"),
     ("shortcut", "Atajo de teclado (ej. ctrl+c)"),
     ("macro", "Macro de texto (escribe texto)"),
@@ -113,6 +114,7 @@ class ItemEditor(tk.Toplevel):
         t = self._current_type_key()
         texts = {
             "program": ("Ruta del .exe:", True, "Ej: C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"),
+            "file": ("Ruta del archivo o acceso directo:", True, "Cualquier archivo (.lnk, .dwg, .pdf, .docx, etc.). Se abre con el programa asociado en Windows, igual que si le dieras doble clic. Ideal para accesos directos con parametros/perfil (ej: acceso directo de Civil 3D)."),
             "script": ("Ruta del script:", True, "Acepta .vbs, .ps1, .bat/.cmd"),
             "shortcut": ("Atajo (formato 'ctrl+c'):", False, "Usa nombres tipo: ctrl, alt, shift, win, f1..f24"),
             "macro": ("Texto a escribir:", False, "El texto se escribira tal cual, como si lo tecleraras"),
@@ -133,6 +135,11 @@ class ItemEditor(tk.Toplevel):
         if t == "program":
             path = filedialog.askopenfilename(title="Selecciona el ejecutable",
                                                filetypes=[("Ejecutables", "*.exe"), ("Todos", "*.*")])
+        elif t == "file":
+            path = filedialog.askopenfilename(
+                title="Selecciona el archivo o acceso directo",
+                filetypes=[("Accesos directos", "*.lnk"), ("Todos", "*.*")]
+            )
         elif t == "script":
             path = filedialog.askopenfilename(title="Selecciona el script",
                                                filetypes=[("Scripts", "*.vbs;*.ps1;*.bat;*.cmd"), ("Todos", "*.*")])
