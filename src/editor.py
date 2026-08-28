@@ -349,4 +349,39 @@ class MainEditor(tk.Tk):
         item = self.config_data["items"][idx]
         if item.get("type") != "submenu":
             messagebox.showinfo("Aviso", "Esta opcion no es de tipo 'submenu'. "
-                                          "Cambia su
+                                          "Cambia su tipo a 'Abrir submenu' primero (boton Editar).")
+            return
+
+        def _on_submenu_close():
+            self._refresh()
+            self.config_data["hotkey"] = self.hotkey_var.get().strip() or "ctrl+shift+alt+space"
+            save_config(self.config_data)
+
+        def _on_submenu_change():
+            self.config_data["hotkey"] = self.hotkey_var.get().strip() or "ctrl+shift+alt+space"
+            save_config(self.config_data)
+
+        SubmenuEditor(self, item, on_close=_on_submenu_close, on_change=_on_submenu_change)
+
+    def _move(self, direction):
+        sel = self.listbox.curselection()
+        if not sel:
+            return
+        idx = sel[0]
+        new_idx = idx + direction
+        items = self.config_data["items"]
+        if 0 <= new_idx < len(items):
+            items[idx], items[new_idx] = items[new_idx], items[idx]
+            self._refresh()
+            self.listbox.selection_set(new_idx)
+
+    def _save_all(self):
+        self.config_data["hotkey"] = self.hotkey_var.get().strip() or "f13"
+        save_config(self.config_data)
+        messagebox.showinfo("Guardado", "Configuracion guardada en config.json.\n"
+                                         "Ya puedes abrir radial_menu.exe para probarlo.")
+
+
+if __name__ == "__main__":
+    app = MainEditor()
+    app.mainloop()
