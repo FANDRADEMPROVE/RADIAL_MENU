@@ -4,9 +4,9 @@ Radial Menu - Menu de anillo activable por hotkey de teclado
 a un boton fisico, sin necesitar permisos de administrador).
 
 Requiere (se instalan solos via requirements.txt):
-    keyboard      -> detectar hotkeys globales y enviar atajos
+    keyboard      -> enviar atajos/macros de teclado
+    pynput        -> detectar el hotkey global (no requiere admin en Windows)
     Pillow        -> cargar iconos PNG (y SVG si hay cairosvg)
-    pywin32       -> lanzar programas de forma mas robusta en Windows
 
 Autor: generado para Francisco
 """
@@ -20,7 +20,8 @@ import threading
 import tkinter as tk
 from tkinter import font as tkfont
 
-import keyboard
+from pynput import keyboard as pynput_keyboard
+import keyboard  # se sigue usando para ENVIAR atajos/macros (keyboard.send / keyboard.write)
 from PIL import Image, ImageTk
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -53,7 +54,6 @@ def load_icon(path, size=ICON_SIZE):
             img = img.resize((size, size), Image.LANCZOS)
         return ImageTk.PhotoImage(img)
     except Exception:
-        # Icono de respaldo: circulo simple si no se encuentra el archivo
         img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
         return ImageTk.PhotoImage(img)
 
@@ -67,13 +67,12 @@ class RadialMenu:
         self.title_text = title
 
         self.root = tk.Toplevel()
-        self.root.overrideredirect(True)          # sin bordes de ventana
+        self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
         self.root.configure(bg=TRANSPARENT_KEY)
         self.root.attributes("-transparentcolor", TRANSPARENT_KEY)
 
         size = radius * 2 + 40
-        # Centrar en la posicion actual del cursor
         px, py = self.root.winfo_pointerxy()
         x = px - size // 2
         y = py - size // 2
@@ -86,8 +85,8 @@ class RadialMenu:
         self.canvas.pack()
 
         self.center = (size // 2, size // 2)
-        self.icon_refs = []  # evitar garbage collection de imagenes
-        self.item_boxes = []  # (x1,y1,x2,y2,index)
+        self.icon_refs = []
+        self.item_boxes = []
         self.hover_index = None
 
         self._draw()
@@ -105,7 +104,6 @@ class RadialMenu:
             return
         angle_step = 360 / n
 
-        # Circulo central (indicador)
         self.canvas.create_oval(
             cx - self.inner_radius, cy - self.inner_radius,
             cx + self.inner_radius, cy + self.inner_radius,
@@ -117,12 +115,11 @@ class RadialMenu:
         )
 
         for i, item in enumerate(self.items):
-            angle_deg = -90 + i * angle_step  # empezar arriba
+            angle_deg = -90 + i * angle_step
             angle_rad = math.radians(angle_deg)
             ix = cx + math.cos(angle_rad) * self.radius
             iy = cy + math.sin(angle_rad) * self.radius
 
-            # Sector visual (cuna) detras del icono
             a0 = angle_deg - angle_step / 2
             a1 = angle_deg + angle_step / 2
             self.canvas.create_arc(
@@ -146,7 +143,6 @@ class RadialMenu:
             box_r = ICON_SIZE
             self.item_boxes.append((ix - box_r, iy - box_r, ix + box_r, iy + box_r, i))
 
-        # Redibujar el circulo central encima de los sectores
         self.canvas.create_oval(
             cx - self.inner_radius, cy - self.inner_radius,
             cx + self.inner_radius, cy + self.inner_radius,
@@ -167,7 +163,6 @@ class RadialMenu:
         idx = self._index_at(event.x, event.y)
         if idx != self.hover_index:
             self.hover_index = idx
-            # (Aqui se podria resaltar el sector activo redibujando)
 
     def _on_click(self, event):
         idx = self._index_at(event.x, event.y)
@@ -237,17 +232,56 @@ def execute_action(item):
             print(f"Error escribiendo macro: {e}")
 
 
+def hotkey_to_pynput_format(hotkey_str):
+    """
+    Convierte 'ctrl+shift+alt+space' (formato de la libreria 'keyboard')
+    al formato que espera pynput.keyboard.GlobalHotKeys: '<ctrl>+<shift>+<alt>+<space>'
+    """
+    aliases = {
+        "ctrl": "<ctrl>", "control": "<ctrl>",
+        "shift": "<shift>",
+        "alt": "<alt>",
+        "win": "<cmd>", "windows": "<cmd>", "super": "<cmd>",
+        "space": "<space>", "espacio": "<space>",
+        "esc": "<esc>", "escape": "<esc>",
+        "tab": "<tab>", "enter": "<enter>", "return": "<enter>",
+    }
+    for i in range(1, 25):
+        aliases[f"f{i}"] = f"<f{i}>"
+
+    parts = [p.strip().lower() for p in hotkey_str.split("+") if p.strip()]
+    converted = []
+    for part in parts:
+        converted.append(aliases.get(part, part))
+    return "+".join(converted)
+
+
 class App:
     def __init__(self):
         self.config = load_config()
         self.root = tk.Tk()
-        self.root.withdraw()  # ventana raiz invisible, solo controla el loop
+        self.root.withdraw()
         self.menu_open = False
 
-        hotkey = self.config.get("hotkey", "f13")
-        keyboard.add_hotkey(hotkey, self.open_menu)
-        print(f"Radial Menu activo. Presiona '{hotkey}' para abrir el menu. "
-              f"Cierra esta ventana de consola para salir.")
+        hotkey_str = self.config.get("hotkey", "ctrl+shift+alt+space")
+        pynput_format = hotkey_to_pynput_format(hotkey_str)
+
+        print(f"Radial Menu activo. Presiona '{hotkey_str}' para abrir el menu.")
+        print("Esta ventana debe permanecer abierta. Cierrala para salir del programa.")
+
+        self.hotkey_str = hotkey_str
+        self.pynput_format = pynput_format
+        self._start_listener()
+
+    def _start_listener(self):
+        """Arranca (o reinicia) el listener global de pynput."""
+        self.listener = pynput_keyboard.GlobalHotKeys({
+            self.pynput_format: self._trigger_open_menu
+        })
+        self.listener.start()
+
+    def _trigger_open_menu(self):
+        self.root.after(0, self.open_menu)
 
     def open_menu(self):
         if self.menu_open:
@@ -257,19 +291,27 @@ class App:
         def _close():
             self.menu_open = False
 
-        # Debe correr en el hilo principal de Tk
-        self.root.after(0, lambda: RadialMenu(
+        RadialMenu(
             self.config["items"],
             radius=self.config.get("ring_radius", 170),
             inner_radius=self.config.get("inner_radius", 55),
             on_close=_close,
             title="Menu"
-        ))
+        )
 
     def run(self):
         self.root.mainloop()
 
 
 if __name__ == "__main__":
-    app = App()
-    app.run()
+    try:
+        app = App()
+        app.run()
+    except Exception as e:
+        import traceback
+        print("=" * 60)
+        print("OCURRIO UN ERROR AL INICIAR RadialMenu:")
+        print("=" * 60)
+        traceback.print_exc()
+        print("=" * 60)
+        input("Presiona ENTER para cerrar esta ventana...")
