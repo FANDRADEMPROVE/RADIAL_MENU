@@ -25,19 +25,11 @@ jobs:
 
       - name: Compilar radial_menu.exe
         working-directory: src
-        run: |
-          pyinstaller --noconfirm --onefile --windowed --name RadialMenu ^
-            --add-data "config.json;." ^
-            --add-data "icons;icons" ^
-            radial_menu.py
+        run: pyinstaller --noconfirm --onefile --windowed --name RadialMenu --add-data "config.json;." --add-data "icons;icons" radial_menu.py
 
       - name: Compilar Editor.exe
         working-directory: src
-        run: |
-          pyinstaller --noconfirm --onefile --windowed --name Editor ^
-            --add-data "config.json;." ^
-            --add-data "icons;icons" ^
-            editor.py
+        run: pyinstaller --noconfirm --onefile --windowed --name Editor --add-data "config.json;." --add-data "icons;icons" editor.py
 
       - name: Preparar carpeta portable
         run: |
