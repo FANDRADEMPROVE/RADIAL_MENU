@@ -8,10 +8,17 @@ y el valor de esa accion. Guarda todo en config.json.
 import json
 import os
 import shutil
+import sys
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, "frozen", False):
+    # Ejecutable compilado (PyInstaller): __file__ apuntaria a la carpeta
+    # temporal _MEIxxxxxx y NO a la carpeta real donde esta el .exe portable.
+    # sys.executable si apunta al .exe real, por eso se usa aqui.
+    BASE_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 ICONS_DIR = os.path.join(BASE_DIR, "icons")
 
