@@ -1,7 +1,7 @@
 {
   "hotkey": "ctrl+shift+alt+space",
-  "ring_radius": 170,
-  "inner_radius": 55,
+  "ring_radius": 85,
+  "inner_radius": 28,
   "items": [
     {
       "label": "Bloc de notas",
