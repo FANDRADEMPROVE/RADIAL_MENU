@@ -141,7 +141,6 @@ class ItemEditor(tk.Toplevel):
         )
         if not path:
             return
-        # Copiar el icono a la carpeta icons/ del proyecto para que viaje junto al programa
         dest_name = os.path.basename(path)
         dest_path = os.path.join(ICONS_DIR, dest_name)
         try:
@@ -178,12 +177,13 @@ class ItemEditor(tk.Toplevel):
 class SubmenuEditor(tk.Toplevel):
     """Ventana para administrar la lista de opciones dentro de un submenu."""
 
-    def __init__(self, master, parent_item, on_close=None):
+    def __init__(self, master, parent_item, on_close=None, on_change=None):
         super().__init__(master)
         self.title(f"Submenu de: {parent_item.get('label', '')}")
         self.geometry("420x380")
         self.parent_item = parent_item
         self.on_close = on_close
+        self.on_change = on_change  # se llama cada vez que hay un cambio (guardado inmediato)
         if "submenu" not in self.parent_item or self.parent_item["submenu"] is None:
             self.parent_item["submenu"] = []
 
@@ -213,11 +213,16 @@ class SubmenuEditor(tk.Toplevel):
             tipo = TYPE_LABELS.get(it.get("type", ""), it.get("type", ""))
             self.listbox.insert(tk.END, f"{it.get('label','(sin nombre)')}  —  {tipo}")
 
+    def _notify_change(self):
+        """Guarda config.json de inmediato tras cualquier cambio en el submenu."""
+        if self.on_change:
+            self.on_change()
+
     def _add(self):
         def _saved(new_item):
             self.parent_item["submenu"].append(new_item)
             self._refresh()
-        # Un submenu no puede tener otro submenu adentro (maximo 2 niveles)
+            self._notify_change()
         ItemEditor(self, allow_submenu=False, on_save=_saved)
 
     def _edit(self):
@@ -230,6 +235,7 @@ class SubmenuEditor(tk.Toplevel):
         def _saved(updated):
             self.parent_item["submenu"][idx] = updated
             self._refresh()
+            self._notify_change()
         ItemEditor(self, item=item, allow_submenu=False, on_save=_saved)
 
     def _delete(self):
@@ -240,6 +246,7 @@ class SubmenuEditor(tk.Toplevel):
         if messagebox.askyesno("Confirmar", "¿Eliminar esta opcion del submenu?"):
             del self.parent_item["submenu"][idx]
             self._refresh()
+            self._notify_change()
 
     def _move(self, direction):
         sel = self.listbox.curselection()
@@ -252,6 +259,7 @@ class SubmenuEditor(tk.Toplevel):
             items[idx], items[new_idx] = items[new_idx], items[idx]
             self._refresh()
             self.listbox.selection_set(new_idx)
+            self._notify_change()
 
     def _close(self):
         if self.on_close:
@@ -341,29 +349,4 @@ class MainEditor(tk.Tk):
         item = self.config_data["items"][idx]
         if item.get("type") != "submenu":
             messagebox.showinfo("Aviso", "Esta opcion no es de tipo 'submenu'. "
-                                          "Cambia su tipo a 'Abrir submenu' primero (boton Editar).")
-            return
-        SubmenuEditor(self, item, on_close=self._refresh)
-
-    def _move(self, direction):
-        sel = self.listbox.curselection()
-        if not sel:
-            return
-        idx = sel[0]
-        new_idx = idx + direction
-        items = self.config_data["items"]
-        if 0 <= new_idx < len(items):
-            items[idx], items[new_idx] = items[new_idx], items[idx]
-            self._refresh()
-            self.listbox.selection_set(new_idx)
-
-    def _save_all(self):
-        self.config_data["hotkey"] = self.hotkey_var.get().strip() or "f13"
-        save_config(self.config_data)
-        messagebox.showinfo("Guardado", "Configuracion guardada en config.json.\n"
-                                         "Ya puedes abrir radial_menu.exe para probarlo.")
-
-
-if __name__ == "__main__":
-    app = MainEditor()
-    app.mainloop()
+                                          "Cambia su
