@@ -1,0 +1,62 @@
+{
+  "hotkey": "ctrl+shift+alt+space",
+  "ring_radius": 170,
+  "inner_radius": 55,
+  "items": [
+    {
+      "label": "Bloc de notas",
+      "icon": "icons/notepad.png",
+      "type": "program",
+      "action": "notepad.exe",
+      "submenu": []
+    },
+    {
+      "label": "Navegador",
+      "icon": "icons/browser.png",
+      "type": "program",
+      "action": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "submenu": []
+    },
+    {
+      "label": "AutoCAD",
+      "icon": "icons/cad.png",
+      "type": "submenu",
+      "action": "",
+      "submenu": [
+        {
+          "label": "Abrir Civil 3D",
+          "icon": "icons/civil3d.png",
+          "type": "program",
+          "action": "C:\\Program Files\\Autodesk\\AutoCAD 2024\\acad.exe"
+        },
+        {
+          "label": "Ejecutar rutina LISP",
+          "icon": "icons/lisp.png",
+          "type": "shortcut",
+          "action": "ctrl+9"
+        }
+      ]
+    },
+    {
+      "label": "Copiar",
+      "icon": "icons/copy.png",
+      "type": "shortcut",
+      "action": "ctrl+c",
+      "submenu": []
+    },
+    {
+      "label": "Script personalizado",
+      "icon": "icons/script.png",
+      "type": "script",
+      "action": "C:\\Scripts\\mi_macro.vbs",
+      "submenu": []
+    },
+    {
+      "label": "Macro de texto",
+      "icon": "icons/macro.png",
+      "type": "macro",
+      "action": "Hola, este es un texto escrito automáticamente.",
+      "submenu": []
+    }
+  ]
+}
