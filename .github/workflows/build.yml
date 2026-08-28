@@ -23,9 +23,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Compilar radial_menu.exe
+      - name: Compilar radial_menu.exe (con consola, para diagnostico)
         working-directory: src
-        run: pyinstaller --noconfirm --onefile --windowed --name RadialMenu --add-data "config.json;." --add-data "icons;icons" radial_menu.py
+        run: pyinstaller --noconfirm --onefile --console --name RadialMenu --hidden-import pynput.keyboard._win32 --hidden-import pynput._util.win32 --hidden-import tkinter --collect-all pynput --add-data "config.json;." --add-data "icons;icons" radial_menu.py
 
       - name: Compilar Editor.exe
         working-directory: src
