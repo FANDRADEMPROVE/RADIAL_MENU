@@ -328,6 +328,20 @@ class App:
     def open_menu(self):
         if self.menu_open:
             return
+
+        # Se relee config.json aqui (no solo una vez al iniciar) para que
+        # los cambios guardados desde el Editor se vean de inmediato, sin
+        # tener que cerrar y volver a abrir radial_menu.exe. El hotkey no
+        # se actualiza con esto (el listener global ya quedo armado con
+        # el anterior); solo items, submenus, iconos y radios de anillo.
+        try:
+            self.config = load_config()
+        except Exception as e:
+            messagebox.showerror(
+                "Radial Menu - Error",
+                f"No se pudo leer config.json, se usara la ultima version cargada:\n{e}"
+            )
+
         self.menu_open = True
 
         def _close():
